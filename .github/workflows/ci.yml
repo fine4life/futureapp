@@ -33,3 +33,38 @@ jobs:
 
       - name: Run tests
         run: dotnet test futureapp.sln --configuration Release --no-build
+
+  publish-image:
+    name: Build and publish Docker image
+    needs: build-and-test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download repository code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/fine4life/futureapp:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/fine4life/futureapp
