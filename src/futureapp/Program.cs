@@ -7,7 +7,7 @@ var app = builder.Build();
 app.MapGet("/", () => Results.Ok(new
 {
     application = "futureapp",
-    message = "futureapp is running!"
+    message = "futureapp CI/CD update confirmed!"
 }));
 
 app.MapHealthChecks("/health");
