@@ -68,3 +68,44 @@ jobs:
           tags: ghcr.io/fine4life/futureapp:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/fine4life/futureapp
+
+  deploy:
+    name: Deploy to Minikube
+    needs: publish-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/setup-futureapp'
+    runs-on: [self-hosted, Linux, X64, minikube]
+
+    permissions:
+      contents: read
+
+    concurrency:
+      group: futureapp-minikube
+      cancel-in-progress: false
+
+    env:
+      KUBECONFIG: /home/sylver/.kube/config
+      IMAGE: ghcr.io/fine4life/futureapp:${{ github.sha }}
+
+    steps:
+      - name: Download repository code
+        uses: actions/checkout@v6
+
+      - name: Check cluster connection
+        run: kubectl --context=minikube get nodes
+
+      - name: Apply Deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed "s|FUTUREAPP_IMAGE|$IMAGE|g" deployment.yaml |
+            kubectl --context=minikube apply -n futureapp -f -
+
+      - name: Apply Service
+        run: kubectl --context=minikube apply -n futureapp -f service.yaml
+
+      - name: Wait for deployment
+        run: |
+          kubectl --context=minikube rollout status \
+            deployment/futureapp \
+            -n futureapp \
+            --timeout=180s
